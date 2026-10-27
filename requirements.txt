@@ -1,0 +1,8 @@
+flask
+pymongo
+requests
+python-dotenv
+marshmallow
+gunicorn
+redis
+psycopg2-binary

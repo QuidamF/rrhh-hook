@@ -1,0 +1,134 @@
+services:
+  app:
+    build: .
+    container_name: omni-app
+    network_mode: "host"
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - pg_omni
+      - redis
+    volumes:
+      - ./media:/app/media
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    network_mode: "host"
+    command: ["mongod", "--port", "27018", "--quiet"]
+    volumes:
+      - mongo-data:/data/db
+
+  pg_omni:
+    image: postgres:15-alpine
+    container_name: pg-omni-db
+    network_mode: "host"
+    environment:
+      POSTGRES_USER: ${PG_USER:-admin}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-admin123}
+      POSTGRES_DB: ${PG_DB:-omnicanal}
+      PGPORT: 5444
+    volumes:
+      - pg-omni-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    network_mode: "host"
+    command: ["redis-server", "--port", "6388"]
+
+  worker-normalizer:
+    build: .
+    container_name: worker-normalizer
+    network_mode: "host"
+    command: ["python", "workers/normalizer_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+
+  worker-brain:
+    build: .
+    container_name: worker-brain
+    network_mode: "host"
+    command: ["python", "workers/brain_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  worker-dispatcher:
+    build: .
+    container_name: worker-dispatcher
+    network_mode: "host"
+    command: ["python", "workers/dispatcher_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  worker-frontend-dispatcher:
+    build: .
+    container_name: worker-frontend-dispatcher
+    network_mode: "host"
+    command: ["python", "workers/frontend_dispatcher_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+
+  worker-ai:
+    build: .
+    container_name: worker-ai
+    network_mode: "host"
+    command: ["python", "workers/ai_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+
+  worker-media:
+    build: .
+    container_name: worker-media
+    network_mode: "host"
+    command: ["python", "workers/media_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+      - mongo
+    volumes:
+      - ./media:/app/media
+
+  worker-summary:
+    build: .
+    container_name: worker-summary
+    network_mode: "host"
+    command: ["python", "workers/summary_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+
+  worker-profiling:
+    build: .
+    container_name: worker-profiling
+    network_mode: "host"
+    command: ["python", "workers/profiling_worker.py"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - pg_omni
+      - mongo
+
+volumes:
+  mongo-data:
+  pg-omni-data:

@@ -1,0 +1,22 @@
+.git
+.gitignore
+" .gitignore"
+.env
+.env.*
+!.env.example
+*.md
+media/
+*.log
+logs/
+__pycache__/
+*.py[cod]
+.venv
+venv/
+.vscode/
+.idea/
+docker-compose*.yml
+mongo-data/
+pg-omni-data/
+data/
+qdrant_storage/
+ollama/

@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv
+venv/
+venv.bak/
+ENV/
+env.bak/
+
+# Environment variables and secrets
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.example
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+*.keystore
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# Media and user downloads (PII / attachments)
+media/
+media/*
+!media/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker and Database storage
+docker-compose.override.yml
+.docker-data/
+mongo-data/
+pg-omni-data/
+data/
+qdrant_storage/
+ollama/
+
+# Logs
+*.log
+logs/
+
+# Testing and Type checking
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Accidental filenames
+" .gitignore"
