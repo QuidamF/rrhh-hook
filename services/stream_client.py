@@ -8,7 +8,12 @@ logger = logging.getLogger(__name__)
 
 class StreamClient:
     def __init__(self):
-        self.redis = redis.from_url(Config.REDIS_URL, decode_responses=True)
+        self.redis = redis.from_url(
+            Config.REDIS_URL, 
+            decode_responses=True, 
+            socket_timeout=15, 
+            socket_connect_timeout=10
+        )
         # Verify connection immediately with ping
         max_retries = 5
         for i in range(max_retries):
@@ -40,7 +45,7 @@ class StreamClient:
                 logger.error(f"Error creating group {group_name}: {e}")
                 raise
 
-    def read_group(self, streams, group_name, consumer_name, count=1, block=5000):
+    def read_group(self, streams, group_name, consumer_name, count=1, block=2000):
         """
         Reads messages from a consumer group.
         'streams' can be a string (single stream) or a dict {stream_name: ">"}.
@@ -53,6 +58,8 @@ class StreamClient:
                 group_name, consumer_name, streams, count=count, block=block
             )
             return messages
+        except (redis.exceptions.TimeoutError, TimeoutError):
+            return []
         except Exception as e:
             logger.error(f"Error reading from streams {streams.keys()}: {e}")
             return []
