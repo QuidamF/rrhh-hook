@@ -84,6 +84,7 @@ services:
   worker-ai:
     build: .
     container_name: worker-ai
+    profiles: ["legacy-ai"]
     network_mode: "host"
     command: ["python", "workers/ai_worker.py"]
     env_file:

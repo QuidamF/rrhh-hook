@@ -232,7 +232,7 @@ def run():
 
                     if is_first_reply:
                         logger.info(f"Primer contacto detectado para {payload['conversation_id']}. Usando respuesta predefinida.")
-                        final_resp = "¡Hola, qué tal! 👋 Soy Samanta, Asesora Consultiva de JPM Jubilación y Pensión Máxima. Para poder orientarte de la mejor manera y revisar tu caso a detalle, ¿me podrías compartir tu nombre y tu Número de Seguridad Social (NSS)?"
+                        final_resp = "¡Hola! 👋 Soy OctyBot, el asistente virtual de Recursos Humanos en Octopy (octopy.com). ¿En qué puedo apoyarte con tu postulación laboral?"
                     else:
                         # --- LAYER 1: THE BRAIN (Gemma) ---
                         system_thinker = THINKER_SYSTEM_PROMPT
