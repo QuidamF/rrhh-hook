@@ -80,3 +80,41 @@ def handle_webhook():
     except Exception as e:
         logger.error(f"Error ingesting webhook: {e}")
         return jsonify({"error": "Ingestion failed"}), 500
+
+@webhook_bp.route("/webhook/telegram/status", methods=["GET"])
+def telegram_webhook_status():
+    """Devuelve el estado actual del webhook registrado en Telegram."""
+    from services.telegram_webhook_manager import TelegramWebhookManager
+    info = TelegramWebhookManager.get_webhook_info()
+    target_url = Config.get_telegram_webhook_url()
+    current_url = info.get("current_url", "")
+    is_active = info.get("is_active", False)
+    matches_target = bool(is_active and target_url and current_url.rstrip("/") == target_url.rstrip("/"))
+    
+    return jsonify({
+        "domain": Config.get_public_domain(),
+        "base_url": Config.get_base_url(),
+        "target_url": target_url,
+        "media_url_base": Config.get_media_url_base(),
+        "is_active": is_active,
+        "matches_target": matches_target,
+        "bot_token_configured": bool(Config.TELEGRAM_BOT_TOKEN and not Config.TELEGRAM_BOT_TOKEN.startswith("your_")),
+        "secret_token_configured": bool(Config.TELEGRAM_SECRET_TOKEN and not Config.TELEGRAM_SECRET_TOKEN.startswith("your_")),
+        "telegram_api": info
+    }), (200 if info.get("ok") else 503)
+
+
+@webhook_bp.route("/webhook/telegram/setup", methods=["POST"])
+def telegram_webhook_setup():
+    """Fuerza la sincronización y registro del webhook de Telegram."""
+    from services.telegram_webhook_manager import TelegramWebhookManager
+    data = request.get_json(silent=True) or {}
+    custom_url = data.get("url") or request.args.get("url")
+    drop_pending = data.get("drop_pending_updates", False)
+    
+    res = TelegramWebhookManager.set_webhook(
+        webhook_url=custom_url,
+        drop_pending_updates=drop_pending
+    )
+    return jsonify(res), (200 if res.get("ok") else 400)
+

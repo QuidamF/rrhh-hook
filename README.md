@@ -1,6 +1,6 @@
 # Omnichannel Messaging Webhook (Architecture v8.5) 🚀
 
-Sistema backend omnicanal asíncrono y orientado a eventos, diseñado para orquestar **WhatsApp (Meta Cloud API)**, **Facebook Messenger** y **Telegram** a nivel industrial. Actúa como el middleware central entre los canales de mensajería, la suite de Workers de Inteligencia Artificial (Ollama / Gemini Flash), el almacenamiento dual (PostgreSQL + MongoDB) y sistemas externos (CRMs como Odoo, Agentes Humanos).
+Sistema backend omnicanal asíncrono y orientado a eventos, diseñado para orquestar **WhatsApp (Meta Cloud API)**, **Facebook Messenger** y **Telegram** a nivel industrial. Actúa como el middleware central entre los canales de mensajería, la suite de Workers de Inteligencia Artificial (OpenAI / Gemini Flash / Ollama), el almacenamiento dual (PostgreSQL + MongoDB) y sistemas externos (CRMs como Odoo, Agentes Humanos).
 
 ---
 
@@ -10,7 +10,7 @@ Para operar o extender este middleware se requieren bases sólidas en:
 
 1. **Arquitecturas Asíncronas & Event-Driven**: Encolado no bloqueante con Redis Streams (`XADD`, `XREADGROUP`, grupos de consumidores y confirmación de ACKs).
 2. **Persistencia Dual (Dual-Write)**: Consistencia relacional y locking en PostgreSQL (fuente de verdad ACID) junto a MongoDB (documentos semiestructurados e historial completo).
-3. **Multi-Agent AI Pipelines**: Flujos de agentes colaborativos (Cerebro Consultivo + Editor de Estilo) con fallback entre LLMs locales (Ollama: Gemma2/Qwen2.5) y Cloud APIs (Google Gemini 2.5 Flash).
+3. **Multi-Agent AI Pipelines**: Flujos de agentes colaborativos (Cerebro Consultivo + Editor de Estilo) con fallback entre LLMs locales (Ollama: Gemma2/Qwen2.5) y Cloud APIs (OpenAI GPT-4o / GPT-4o-mini y Google Gemini 2.5 Flash).
 4. **Seguridad Web Defensiva**: Validación criptográfica HMAC-SHA256 (`X-Hub-Signature-256`), Secret Tokens de Telegram, autenticación vía API Key y Rate Limiting adaptativo contra escaneos DDoS.
 5. **Python Concurrente & Demonios**: Flask con pool multihilo (`psycopg2.pool.ThreadedConnectionPool`), Workers en segundo plano con reconexión automática y manejo de ciclo de vida en Docker.
 
@@ -39,7 +39,7 @@ El proyecto sigue una separación estricta de responsabilidades:
 3. **Almacenamiento Dual (`database/`)**: Persiste en PostgreSQL (conversación y mensaje) y MongoDB (historial y búsqueda rápida por idempotencia).
 4. **Agentes de IA (`workers/ai_worker.py`)**:
    - Arquitectura en 2 capas: **Cerebro (Thinker)** para razonamiento consultivo (ej. peritaje en Ley 73/97 de pensiones) + **Editor** para tono humano, conciso y empático.
-   - Soporte dual: Ollama local y Google Gemini 2.5 Flash.
+   - Soporte multi-proveedor: OpenAI (GPT-4o / GPT-4o-mini), Google Gemini 2.5 Flash y Ollama local.
    - Simulación de cadencia de tecleo humano (`ENABLE_TYPING_DELAY`).
 5. **Perfilamiento y Resumen (`workers/profiling_worker.py`, `workers/summary_worker.py`)**:
    - Extracción asíncrona de datos del cliente (NSS, año de alta, régimen de pensión, semanas cotizadas).

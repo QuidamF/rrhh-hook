@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 class MediaService:
     def __init__(self):
         self.media_root = Config.MEDIA_ROOT
-        self.base_url = Config.MEDIA_URL_BASE
+        self.base_url = Config.get_media_url_base()
+
         
         # Ensure media root exists
         if not os.path.exists(self.media_root):

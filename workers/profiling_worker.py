@@ -35,44 +35,97 @@ REGLA DE ORO:
 """
 
 def call_llm_json(system_prompt, user_prompt):
-    """Wrapper to call Gemini and force JSON output if possible"""
-    if Config.USE_GEMINI and Config.GEMINI_API_KEY:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={Config.GEMINI_API_KEY}"
-        payload = {
-            "system_instruction": {"parts": [{"text": system_prompt}]},
-            "contents": [{"parts":[{"text": user_prompt}]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "responseMimeType": "application/json"
-            }
-        }
-        try:
-            resp = requests.post(url, json=payload, timeout=30)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
-        except Exception as e:
-            logger.error(f"Failed Gemini JSON: {e}")
-            return "{}"
+    """Wrapper to call OpenAI, Gemini, or Ollama and force JSON output"""
+    provider = Config.get_active_provider()
+    if provider == "openai":
+        res = call_llm_openai_json(system_prompt, user_prompt)
+        if res is not None:
+            return res
+        return call_llm_ollama_json(system_prompt, user_prompt)
+    elif provider == "gemini":
+        res = call_llm_gemini_json(system_prompt, user_prompt)
+        if res is not None:
+            return res
+        return call_llm_ollama_json(system_prompt, user_prompt)
     else:
-        # Fallback to Ollama
-        try:
-            resp = requests.post(
-                Config.OLLAMA_URL,
-                json={
-                    "model": Config.OLLAMA_MODEL, 
-                    "system": system_prompt,
-                    "prompt": user_prompt,
-                    "stream": False,
-                    "format": "json",
-                    "options": {"temperature": 0.1}
-                },
-                timeout=120
-            )
-            return resp.json().get("response", "{}")
-        except Exception as e:
-            logger.error(f"Failed Ollama JSON: {e}")
-            return "{}"
+        return call_llm_ollama_json(system_prompt, user_prompt)
+
+def call_llm_openai_json(system_prompt, user_prompt):
+    if not Config.OPENAI_API_KEY:
+        return None
+    base_url = (Config.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip('/')
+    url = f"{base_url}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": user_prompt})
+
+    payload = {
+        "model": Config.OPENAI_MODEL or "gpt-4o-mini",
+        "messages": messages,
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"}
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "{}").strip()
+        else:
+            logger.error(f"OpenAI JSON Error {resp.status_code}: {resp.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Failed OpenAI JSON: {e}")
+        return None
+
+def call_llm_gemini_json(system_prompt, user_prompt):
+    if not Config.GEMINI_API_KEY:
+        return None
+    gemini_base = (Config.GEMINI_BASE_URL or "https://generativelanguage.googleapis.com/v1beta").rstrip('/')
+    model_name = Config.GEMINI_MODEL or "gemini-2.5-flash"
+    url = f"{gemini_base}/models/{model_name}:generateContent?key={Config.GEMINI_API_KEY}"
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"parts":[{"text": user_prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json"
+        }
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
+        else:
+            logger.error(f"Gemini JSON Error {resp.status_code}: {resp.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Failed Gemini JSON: {e}")
+        return None
+
+def call_llm_ollama_json(system_prompt, user_prompt):
+    try:
+        resp = requests.post(
+            Config.OLLAMA_URL,
+            json={
+                "model": Config.OLLAMA_MODEL, 
+                "system": system_prompt,
+                "prompt": user_prompt,
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0.1}
+            },
+            timeout=120
+        )
+        return resp.json().get("response", "{}")
+    except Exception as e:
+        logger.error(f"Failed Ollama JSON: {e}")
+        return "{}"
 
 def run():
     client = StreamClient()

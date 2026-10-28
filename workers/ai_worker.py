@@ -92,31 +92,74 @@ Eres la Voz de Samanta, Asesora Consultiva de JPM. Tu trabajo es HUMANIZAR el pe
 """
 
 def call_llm(model, system_prompt, user_prompt, temperature=0.3):
-    """Unified LLM wrapper. Routes to Gemini API if USE_GEMINI is true, else Ollama."""
-    if Config.USE_GEMINI:
-        if not Config.GEMINI_API_KEY:
-            logger.error("GEMINI_API_KEY not set. Falling back to Ollama.")
-            return call_llm_ollama(model, system_prompt, user_prompt, temperature)
-            
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={Config.GEMINI_API_KEY}"
-        payload = {
-            "system_instruction": {"parts": [{"text": system_prompt}]},
-            "contents": [{"parts":[{"text": user_prompt}]}],
-            "generationConfig": {"temperature": temperature}
-        }
-        try:
-            resp = requests.post(url, json=payload, timeout=30)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            else:
-                logger.error(f"Gemini API Error {resp.status_code}: {resp.text}")
-                return call_llm_ollama(model, system_prompt, user_prompt, temperature)
-        except Exception as e:
-            logger.error(f"Failed to connect to Gemini API: {e}")
-            return call_llm_ollama(model, system_prompt, user_prompt, temperature)
+    """Unified LLM wrapper. Routes dynamically to OpenAI, Gemini API, or Ollama."""
+    provider = Config.get_active_provider()
+    if provider == "openai":
+        return call_llm_openai(system_prompt, user_prompt, temperature)
+    elif provider == "gemini":
+        return call_llm_gemini(system_prompt, user_prompt, temperature)
     else:
         return call_llm_ollama(model, system_prompt, user_prompt, temperature)
+
+def call_llm_openai(system_prompt, user_prompt, temperature=0.3):
+    """Llama a la API de OpenAI (chat/completions) vía REST."""
+    if not Config.OPENAI_API_KEY:
+        logger.error("OPENAI_API_KEY not set. Falling back to Ollama.")
+        return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
+
+    base_url = (Config.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip('/')
+    url = f"{base_url}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": user_prompt})
+
+    payload = {
+        "model": Config.OPENAI_MODEL or "gpt-4o-mini",
+        "messages": messages,
+        "temperature": temperature
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        else:
+            logger.error(f"OpenAI API Error {resp.status_code}: {resp.text}. Falling back to Ollama.")
+            return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
+    except Exception as e:
+        logger.error(f"Failed to connect to OpenAI API: {e}. Falling back to Ollama.")
+        return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
+
+def call_llm_gemini(system_prompt, user_prompt, temperature=0.3):
+    """Llama a la API de Google Gemini vía REST."""
+    if not Config.GEMINI_API_KEY:
+        logger.error("GEMINI_API_KEY not set. Falling back to Ollama.")
+        return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
+        
+    gemini_base = (Config.GEMINI_BASE_URL or "https://generativelanguage.googleapis.com/v1beta").rstrip('/')
+    model_name = Config.GEMINI_MODEL or "gemini-2.5-flash"
+    url = f"{gemini_base}/models/{model_name}:generateContent?key={Config.GEMINI_API_KEY}"
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"parts":[{"text": user_prompt}]}],
+        "generationConfig": {"temperature": temperature}
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        else:
+            logger.error(f"Gemini API Error {resp.status_code}: {resp.text}. Falling back to Ollama.")
+            return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
+    except Exception as e:
+        logger.error(f"Failed to connect to Gemini API: {e}. Falling back to Ollama.")
+        return call_llm_ollama(Config.OLLAMA_MODEL, system_prompt, user_prompt, temperature)
 
 def call_llm_ollama(model, system_prompt, user_prompt, temperature=0.3):
     try:

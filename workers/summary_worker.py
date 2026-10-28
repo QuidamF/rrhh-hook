@@ -62,36 +62,30 @@ def run():
                         text = content.get("body", "")
                         context += f"{role}: {text}\n"
                     
-                    # 2. Ask Gemma for the summary
-                    response = requests.post(
-                        Config.OLLAMA_URL,
-                        json={
-                            "model": Config.OLLAMA_MODEL, # Use the stronger model (Gemma)
-                            "prompt": f"{SUMMARY_PROMPT}\n\nConversación:\n{context}\n\nAnalista:",
-                            "stream": False,
-                            "options": {"temperature": 0.1}
+                    # 2. Ask LLM (OpenAI, Gemini or Ollama) for the summary
+                    from workers.ai_worker import call_llm
+                    summary_text = call_llm(
+                        Config.OLLAMA_MODEL,
+                        system_prompt=SUMMARY_PROMPT,
+                        user_prompt=f"Conversación:\n{context}\n\nAnalista:",
+                        temperature=0.1
+                    ).strip()
+                    # 3. Notify Odoo (Mock)
+                    # We send a special event 'handoff'
+                    odoo_payload = {
+                        "event": "handoff.summary",
+                        "message_uuid": conv_id,
+                        "actor_id": payload["user_id"],
+                        "channel": payload["channel"],
+                        "content": {
+                            "summary": summary_text,
+                            "type": "handoff_report"
                         }
-                    )
+                    }
                     
-                    if response.status_code == 200:
-                        summary_text = response.json().get("response", "").strip()
-                        
-                        # 3. Notify Odoo (Mock)
-                        # We send a special event 'handoff'
-                        odoo_payload = {
-                            "event": "handoff.summary",
-                            "message_uuid": conv_id,
-                            "actor_id": payload["user_id"],
-                            "channel": payload["channel"],
-                            "content": {
-                                "summary": summary_text,
-                                "type": "handoff_report"
-                            }
-                        }
-                        
-                        # Use local URL for the mock
-                        requests.post("http://127.0.0.1:5020/debug/frontend-mock", json=odoo_payload)
-                        logger.info(f"Summary generated and sent to Odoo for {conv_id}")
+                    # Use local URL for the mock
+                    requests.post("http://127.0.0.1:5020/debug/frontend-mock", json=odoo_payload)
+                    logger.info(f"Summary generated and sent to Odoo for {conv_id}")
 
                     # 4. ACK
                     client.ack(stream_in, group_name, msg_id)

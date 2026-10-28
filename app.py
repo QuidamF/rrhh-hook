@@ -31,6 +31,14 @@ def create_app():
     app.register_blueprint(maintenance_bp)
     app.register_blueprint(subscriptions_bp, url_prefix='/subscriptions')
     
+    # Auto-configuración de Telegram Webhook al levantar la aplicación
+    try:
+        from services.telegram_webhook_manager import TelegramWebhookManager
+        TelegramWebhookManager.auto_configure_on_startup()
+    except Exception as e:
+        logger.warning(f"No se pudo ejecutar auto-configuración de Telegram al iniciar: {e}")
+
+    
     @app.route("/health", methods=["GET"])
     def health():
         return jsonify({"status": "healthy"}), 200
